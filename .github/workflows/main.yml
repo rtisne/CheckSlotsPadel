@@ -10,10 +10,6 @@ on:
         required: true
         default: "2024-11-21"
 
-concurrency:
-  group: check-slots
-  cancel-in-progress: true # Annuler les exécutions en cours si une nouvelle est déclenchée
-
 jobs:
   run_script:
     runs-on: python:3-slim
