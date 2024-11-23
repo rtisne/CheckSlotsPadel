@@ -2,7 +2,7 @@ name: Check Slots
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/5 * * * *' # Run every 5 minutes
   workflow_dispatch:
     inputs:
       date:
@@ -10,32 +10,19 @@ on:
         required: true
         default: "2024-11-21"
 
+concurrency:
+  group: check-slots
+  cancel-in-progress: true # Annuler les exécutions en cours si une nouvelle est déclenchée
+
+permissions:
+  contents: read
+  secrets: write
+
 jobs:
   run_script:
-    runs-on: ubuntu-latest
+    runs-on: python:3-slim
     steps:
-      # Étape 1 : Vérifier uniquement les fichiers nécessaires
-      - name: Checkout necessary files
-        uses: actions/checkout@v3
-        with:
-          # Fetch minimal history
-          fetch-depth: 1
-          # Optional: Include only specific paths (uncomment if applicable)
-          # path: |
-          #   Creneaux.py
-          #   config.env
-
-      # Étape 2 : Installer Python uniquement
-      - name: Setup Python environment
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-
-      # Étape 3 : Installer uniquement la dépendance requise
-      - name: Install requests library
-        run: python -m pip install --quiet requests
-
-      # Étape 4 : Charger les variables et vérifier si DATE est défini
+      # Étape 1 : Charger et vérifier les variables
       - name: Load variables from file and check DATE
         id: load-vars
         run: |
@@ -57,10 +44,49 @@ jobs:
             echo "continue=true" >> $GITHUB_ENV
           fi
 
-      # Étape 5 : Exécuter le script si DATE est valide
+      # Étape 2 : Cloner uniquement les fichiers nécessaires
+      - name: Checkout necessary files
+        if: env.continue == 'true'
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+          sparse-checkout: |
+            Creneaux.py
+            config.env
+
+      # Étape 3 : Configuration de Python
+      - name: Setup Python environment
+        if: env.continue == 'true'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      # Étape 4 : Cache des dépendances Python
+      - name: Cache Python dependencies
+        if: env.continue == 'true'
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # Étape 5 : Installer les dépendances
+      - name: Install dependencies
+        if: env.continue == 'true'
+        run: |
+          python -m pip install --quiet requests
+
+      # Étape 6 : Exécuter le script Python
       - name: Run Python script
         if: env.continue == 'true'
         env:
           PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
           PUSHOVER_API_TOKEN: ${{ secrets.PUSHOVER_API_TOKEN }}
         run: python Creneaux.py $DATE
+
+      # Étape 7 : Message si le script est ignoré
+      - name: Skip message
+        if: env.continue == 'false'
+        run: |
+          echo "The script was not executed because DATE is not set."
