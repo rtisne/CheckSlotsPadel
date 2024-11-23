@@ -14,10 +14,6 @@ concurrency:
   group: check-slots
   cancel-in-progress: true # Annuler les exécutions en cours si une nouvelle est déclenchée
 
-permissions:
-  contents: read
-  secrets: write
-
 jobs:
   run_script:
     runs-on: python:3-slim
