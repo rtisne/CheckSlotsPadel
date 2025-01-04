@@ -28,7 +28,7 @@ def check_slots():
                     start_time = slot.get("startAt")
                     is_bookable = any(price.get("bookable") for price in slot.get("prices", []))
                     
-                    if start_time in ["12:15", "12:30"] and is_bookable:
+                    if start_time in ["12:15", "12h30", "12:45"] and is_bookable:
                         send_pushover_notification(start_time, date_to_check)
                         return
         print("pas de créneaux pour " + date_to_check)
