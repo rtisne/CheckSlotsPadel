@@ -1,11 +1,18 @@
-import requests
 import os
 import sys
-from datetime import datetime, timedelta
+import requests
+from datetime import date, datetime, timedelta
 
-date_to_check = sys.argv[1] if len(sys.argv) > 1 else "2024-11-14"
-hours_to_check = (sys.argv[2] if len(sys.argv) > 1 else "12:15,12:30,12:45").split(",")
+# → 1️⃣ Calcul de la date cible : jeudi, deux semaines après aujourd’hui
+today = date.today()
+two_weeks = today + timedelta(weeks=2)
+# Jeudi = weekday() == 3 (lundi=0)
+days_until_thursday = (3 - two_weeks.weekday()) % 7
+target_date = two_weeks + timedelta(days=days_until_thursday)
+date_to_check = target_date.isoformat()
 
+# → 2️⃣ Heure fixe à vérifier
+hours_to_check = ["12:30"]
 from_time = hours_to_check[0]
 to_time = (datetime.strptime(hours_to_check[-1], "%H:%M") + timedelta(hours=1)).strftime("%H:%M:%S")
 
@@ -19,40 +26,31 @@ PUSHOVER_USER_KEY = os.getenv("PUSHOVER_USER_KEY")
 PUSHOVER_API_TOKEN = os.getenv("PUSHOVER_API_TOKEN")
 
 def send_pushover_notification(slot_time):
-    """Envoie une notification via Pushover."""
-    message = f"Un créneau est disponible le {date_to_check} à {slot_time}."
-    payload = {
-        "token": PUSHOVER_API_TOKEN,
-        "user": PUSHOVER_USER_KEY,
-        "message": message,
-    }
+    message = f"✅ Créneau dispo le {date_to_check} à {slot_time}."
+    payload = {"token": PUSHOVER_API_TOKEN, "user": PUSHOVER_USER_KEY, "message": message}
     try:
-        response = requests.post(PUSHOVER_URL, data=payload)
-        response.raise_for_status()
-        print(f"Notification envoyée pour le créneau {slot_time}.")
-    except requests.RequestException as e:
-        print(f"Erreur lors de l'envoi de la notification : {e}")
+        r = requests.post(PUSHOVER_URL, data=payload)
+        r.raise_for_status()
+        print(f"[OK] Notification envoyée pour {date_to_check} {slot_time}")
+    except Exception as e:
+        print(f"[ERR] Échec notification : {e}")
 
 def check_slots():
-    """Vérifie les créneaux disponibles."""
     try:
-        response = requests.get(API_URL)
-        response.raise_for_status()
-        slots = response.json().get("hydra:member", [])
-
-        for member in slots:
+        resp = requests.get(API_URL)
+        resp.raise_for_status()
+        for member in resp.json().get("hydra:member", []):
             if "Single" in member.get("name", ""):
                 continue
-
             for activity in member.get("activities", []):
                 for slot in activity.get("slots", []):
-                    if slot.get("startAt") in hours_to_check and any(price.get("bookable") for price in slot.get("prices", [])):
+                    if slot.get("startAt") in hours_to_check and any(p.get("bookable") for p in slot.get("prices", [])):
                         send_pushover_notification(slot["startAt"])
                         return
-
-        print(f"Aucun créneau disponible pour {date_to_check}.")
-    except requests.RequestException as e:
-        print(f"Erreur lors de la requête : {e}")
+        print(f"[INFO] Aucun créneau le {date_to_check} à {from_time}")
+    except Exception as e:
+        print(f"[ERR] Requête API : {e}")
 
 if __name__ == "__main__":
+    print(f"▶️ Recherche du créneau {date_to_check} à {from_time}")
     check_slots()
