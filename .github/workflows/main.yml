@@ -10,27 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3 # Ensure latest version of checkout action
+        uses: actions/checkout@v3
 
       - name: Setup Python
-        uses: actions/setup-python@v4 # Ensure latest version of setup-python action
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: |
-          pip install requests
+        run: pip install requests
 
       - name: Run script
-        if: env.continue == 'true'
         env:
           PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
           PUSHOVER_API_TOKEN: ${{ secrets.PUSHOVER_API_TOKEN }}
         run: |
           echo "Executing script"
           python Creneaux.py
-
-      - name: Skip message
-        if: env.continue == 'false'
-        run: |
-          echo "The script was not executed because DATE is not set."
