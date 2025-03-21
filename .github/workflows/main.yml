@@ -4,11 +4,6 @@ on:
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
-    inputs:
-      date:
-        description: "Date du créneau à vérifier (format AAAA-MM-JJ)"
-        required: true
-        default: "2024-11-21"
 
 jobs:
   run_script:
@@ -37,34 +32,14 @@ jobs:
             exit 1
           fi
 
-          # Check if DATE is empty
-          if [ -z "$DATE" ]; then
-            echo "DATE is empty. Skipping script execution."
-            echo "continue=false" >> $GITHUB_ENV
-          else
-            echo "DATE is set to: $DATE"
-            echo "DATE=$DATE" >> $GITHUB_ENV
-            echo "continue=true" >> $GITHUB_ENV
-          fi
-
-           # Check if HOURS is empty
-          if [ -z "$HOURS" ]; then
-            echo "HOURS is empty. Skipping script execution."
-            echo "continue=false" >> $GITHUB_ENV
-          else
-            echo "HOURS is set to: $DATE"
-            echo "HOURS=$HOURS" >> $GITHUB_ENV
-            echo "continue=true" >> $GITHUB_ENV
-          fi
-
       - name: Run script
         if: env.continue == 'true'
         env:
           PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
           PUSHOVER_API_TOKEN: ${{ secrets.PUSHOVER_API_TOKEN }}
         run: |
-          echo "Executing script with DATE: $DATE and HOURS: $HOURS"
-          python Creneaux.py $DATE $HOURS
+          echo "Executing script"
+          python Creneaux.py
 
       - name: Skip message
         if: env.continue == 'false'
