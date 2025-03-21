@@ -21,17 +21,6 @@ jobs:
         run: |
           pip install requests
 
-      - name: Load variables from file
-        id: load-vars
-        run: |
-          # Load variables from config.env
-          if [ -f config.env ]; then
-            source config.env
-          else
-            echo "Error: config.env file not found!"
-            exit 1
-          fi
-
       - name: Run script
         if: env.continue == 'true'
         env:
