@@ -12,9 +12,9 @@ target_date = two_weeks + timedelta(days=days_until_thursday)
 date_to_check = target_date.isoformat()
 
 # → 2️⃣ Heure fixe à vérifier
-hours_to_check = ["12:30"]
+hours_to_check = ["12:30:00"]
 from_time = hours_to_check[0]
-to_time = (datetime.strptime(hours_to_check[-1], "%H:%M") + timedelta(hours=1)).strftime("%H:%M:%S")
+to_time = (datetime.strptime(hours_to_check[-1], "%H:%M:%S") + timedelta(hours=1)).strftime("%H:%M:%S")
 
 API_URL = (
     f"https://api-v3.doinsport.club/clubs/playgrounds/plannings/{date_to_check}"
@@ -24,6 +24,14 @@ API_URL = (
 PUSHOVER_URL = "https://api.pushover.net/1/messages.json"
 PUSHOVER_USER_KEY = os.getenv("PUSHOVER_USER_KEY")
 PUSHOVER_API_TOKEN = os.getenv("PUSHOVER_API_TOKEN")
+
+def normalize_time(time_str):
+    try:
+        # Essayer de parser au format HH:MM:SS
+        return datetime.strptime(time_str, "%H:%M:%S").strftime("%H:%M:%S")
+    except ValueError:
+        # Sinon, parser au format HH:MM et ajouter ":00"
+        return datetime.strptime(time_str, "%H:%M").strftime("%H:%M:%S")
 
 def send_pushover_notification(slot_time):
     message = f"✅ Créneau dispo le {date_to_check} à {slot_time}."
@@ -44,7 +52,7 @@ def check_slots():
                 continue
             for activity in member.get("activities", []):
                 for slot in activity.get("slots", []):
-                    if slot.get("startAt") in hours_to_check and any(p.get("bookable") for p in slot.get("prices", [])):
+                    if  normalize_time(slot.get("startAt")) in hours_to_check and any(p.get("bookable") for p in slot.get("prices", [])):
                         send_pushover_notification(slot["startAt"])
                         return
         print(f"[INFO] Aucun créneau le {date_to_check} à {from_time}")
